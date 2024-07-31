@@ -49,6 +49,6 @@ client.on('messageCreate', async (message) => {
 
 
 // Connexion du bot
-client.login("MTI2ODE5ODcyMDEyNjcxMzg4OA.GjMpHY.VloNNLCAyZbAOQXKifSgzR4iplPcpcQI2kmDfw").catch(error => {
+client.login(process.env.DISCORD_TOKEN).catch(error => {
     console.error(`Erreur de connexion au bot : ${error.message}`);
 });
