@@ -1,23 +1,23 @@
-# Use the official Node.js image as a base image
+# Use the official Node.js image as a parent image
 FROM node:18
 
-# Set the working directory inside the container
+# Set the working directory in the container
 WORKDIR /usr/src/app
 
-# Copy the package.json and package-lock.json to the working directory
+# Copy package.json and package-lock.json (if available) to the working directory
 COPY package*.json ./
 
-# Install the bot's dependencies
+# Install the Node.js dependencies
 RUN npm install
 
-# Copy the rest of the bot's code to the working directory
+# Copy the rest of the application code to the working directory
 COPY . .
 
-# Expose any ports the bot might need (optional, not needed for a Discord bot)
+# Copy the .env file into the container
+COPY .env .env
+
+# Expose the port that the application runs on (optional, adjust as needed)
 # EXPOSE 3000
 
-# Set environment variables
-ENV DISCORD_TOKEN=MTI2ODE5ODcyMDEyNjcxMzg4OA.G_9QSh.a5q8uSp4VJTvt8wy3Y3lxid-gFswpy0jPxwwV4
-
-# Start the bot
+# Command to run the application
 CMD ["node", "index.js"]
