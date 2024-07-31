@@ -13,9 +13,6 @@ RUN npm install
 # Copy the rest of the application code to the working directory
 COPY . .
 
-# Copy the .env file into the container
-COPY .env .env
-
 # Expose the port that the application runs on (optional, adjust as needed)
 # EXPOSE 3000
 
