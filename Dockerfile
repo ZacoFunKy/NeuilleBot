@@ -17,7 +17,7 @@ COPY . .
 # EXPOSE 3000
 
 # Set environment variables
-ENV DISCORD_TOKEN=your-bot-token-here
+ENV DISCORD_TOKEN=MTI2ODE5ODcyMDEyNjcxMzg4OA.G_9QSh.a5q8uSp4VJTvt8wy3Y3lxid-gFswpy0jPxwwV4
 
 # Start the bot
 CMD ["node", "index.js"]
