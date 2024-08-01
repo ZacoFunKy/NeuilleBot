@@ -1,6 +1,7 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Presence} = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
+const { targetUserId, monitoredUserId } = require('./config.json');
 const path = require('path');
 
 // Créer le client Discord
@@ -10,6 +11,7 @@ const client = new Client({
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildPresences,
     ],
 });
 
@@ -46,6 +48,41 @@ client.on('messageCreate', async (message) => {
     }
 });
 
+// Gestion des interactions
+const userConnectionTimes = new Map();
+
+// Surveillance des présences
+client.on('presenceUpdate', async (oldPresence, newPresence) => {
+    const monitoredUser = monitoredUserId;
+
+    if (newPresence.userId === monitoredUser) {
+        const currentTime = Date.now();
+        const timeDifference = currentTime - userConnectionTimes.get(monitoredUser) || 0;
+
+        if (!oldPresence || oldPresence.status !== 'offline' && newPresence.status === 'offline') {
+            // L'utilisateur surveillé s'est déconnecté
+            const user = await client.users.fetch(targetUserId);
+            await user.send(`<@${monitoredUser}> s'est déconnecté. Temps total en ligne : ${msToTime(timeDifference)}.`);
+
+            // Effacer le temps de connexion de la carte
+            userConnectionTimes.delete(monitoredUser);
+        } else if (!userConnectionTimes.has(monitoredUser) && newPresence.status === 'online') {
+            // L'utilisateur surveillé s'est connecté pour la première fois
+            const user = await client.users.fetch(targetUserId);
+            await user.send(`<@${monitoredUser}> s'est connecté.`);
+            userConnectionTimes.set(monitoredUser, currentTime);
+        }
+    }
+});
+// Fonction pour convertir le temps en millisecondes en format 'jours heures minutes secondes'
+function msToTime(duration) {
+    const seconds = Math.floor((duration / 1000) % 60);
+    const minutes = Math.floor((duration / (1000 * 60)) % 60);
+    const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+    const days = Math.floor(duration / (1000 * 60 * 60 * 24));
+
+    return `${days} jours, ${hours} heures, ${minutes} minutes et ${seconds} secondes`;
+}
 
 
 // Connexion du bot
