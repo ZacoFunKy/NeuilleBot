@@ -11,8 +11,10 @@
   "description": "",
   "dependencies": {
     "@discordjs/voice": "^0.17.0",
+    "axios": "^1.7.2",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
-    "libsodium-wrappers": "^0.7.14"
+    "libsodium-wrappers": "^0.7.14",
+    "node-fetch": "^3.3.2"
   }
 }
