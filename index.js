@@ -57,23 +57,28 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 
     if (newPresence.userId === monitoredUser) {
         const currentTime = Date.now();
-        const timeDifference = currentTime - userConnectionTimes.get(monitoredUser) || 0;
 
-        if (!oldPresence || oldPresence.status !== 'offline' && newPresence.status === 'offline') {
-            // L'utilisateur surveillé s'est déconnecté
-            const user = await client.users.fetch(targetUserId);
-            await user.send(`<@${monitoredUser}> s'est déconnecté. Temps total en ligne : ${msToTime(timeDifference)}.`);
-
-            // Effacer le temps de connexion de la carte
-            userConnectionTimes.delete(monitoredUser);
-        } else if (!userConnectionTimes.has(monitoredUser) && newPresence.status === 'online') {
-            // L'utilisateur surveillé s'est connecté pour la première fois
+        // Vérifiez si l'utilisateur est en ligne
+        if (!oldPresence || oldPresence.status === 'offline' && newPresence.status === 'online') {
+            // L'utilisateur surveillé s'est connecté
             const user = await client.users.fetch(targetUserId);
             await user.send(`<@${monitoredUser}> s'est connecté.`);
             userConnectionTimes.set(monitoredUser, currentTime);
+        } else if (oldPresence && oldPresence.status !== 'offline' && newPresence.status === 'offline') {
+            // L'utilisateur surveillé s'est déconnecté
+            if (userConnectionTimes.has(monitoredUser)) {
+                const connectionTime = userConnectionTimes.get(monitoredUser);
+                const timeDifference = currentTime - connectionTime;
+                const user = await client.users.fetch(targetUserId);
+                await user.send(`<@${monitoredUser}> s'est déconnecté. Temps total en ligne : ${msToTime(timeDifference)}.`);
+
+                // Effacer le temps de connexion de la carte
+                userConnectionTimes.delete(monitoredUser);
+            }
         }
     }
 });
+
 // Fonction pour convertir le temps en millisecondes en format 'jours heures minutes secondes'
 function msToTime(duration) {
     const seconds = Math.floor((duration / 1000) % 60);
