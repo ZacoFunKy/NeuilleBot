@@ -62,7 +62,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
         if (!oldPresence || oldPresence.status === 'offline' && newPresence.status === 'online') {
             // L'utilisateur surveillé s'est connecté
             const user = await client.users.fetch(targetUserId);
-            await user.send(`<@${monitoredUser}> s'est connecté.`);
+            await user.send(`<@${monitoredUser}> s'est connecté. Il y maintenant ${msToTime(currentTime)}.`);
             userConnectionTimes.set(monitoredUser, currentTime);
         } else if (oldPresence && oldPresence.status !== 'offline' && newPresence.status === 'offline') {
             // L'utilisateur surveillé s'est déconnecté
