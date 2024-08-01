@@ -4,7 +4,8 @@ const axios = require('axios');
 require('dotenv').config();
 
 const FREESOUND_API_KEY = process.env.FREESOUND_API_KEY; // Your Freesound API key
-const RANDOM_FART_SOUND_URL = `https://freesound.org/apiv2/search/text/?query=fart&fields=id&sort=downloads_desc&token=${FREESOUND_API_KEY}`;
+
+const RANDOM_FART_SOUND_URL = 'https://freesound.org/apiv2/search/text/?query=fart&fields=id&sort=downloads_desc&token=' + FREESOUND_API_KEY;
 const SOUND_DETAILS_URL = `https://freesound.org/apiv2/sounds/`; // Base URL to get sound details
 
 async function fetchRandomFartSound() {
@@ -16,38 +17,29 @@ async function fetchRandomFartSound() {
             throw new Error('No sounds found.');
         }
 
+        // Choose a random sound from the list
         const randomSound = sounds[Math.floor(Math.random() * sounds.length)];
+
+        // Fetch the sound details to get the download URL
         const soundDetailsResponse = await axios.get(`${SOUND_DETAILS_URL}${randomSound.id}/?token=${FREESOUND_API_KEY}`);
         const soundDetails = soundDetailsResponse.data;
 
         return soundDetails.previews['preview-hq-mp3'];
     } catch (error) {
-        console.error(`Error fetching sound: ${error.message}`);
+        console.error(`Erreur lors de la récupération du son : ${error.message}`);
         return null;
     }
 }
 
-module.exports = async (oldState, newState) => {
-    console.log(`Voice state updated: ${oldState.channelId} -> ${newState.channelId}`);
-
-    const userJoinedChannel = oldState.channelId === null && newState.channelId !== null;
-    const userChangedChannel = oldState.channelId !== newState.channelId;
-
-    if (userJoinedChannel || userChangedChannel) {
-        console.log(`User joined/changed voice channel: ${newState.channel.name}`);
-        await playSoundBasedOnUser(newState);
-    }
-};
-
-async function playSoundBasedOnUser(state) {
+async function playFartSound(state) {
     const channel = state.channel;
 
     if (!channel) {
-        console.log('Voice channel does not exist.');
+        console.log('Le canal vocal n\'existe pas.');
         return;
     }
 
-    console.log(`Attempting to connect to channel: ${channel.name}`);
+    console.log(`Tentative de connexion au canal : ${channel.name}`);
 
     try {
         const connection = joinVoiceChannel({
@@ -57,64 +49,77 @@ async function playSoundBasedOnUser(state) {
         });
 
         connection.on('error', (error) => {
-            console.error(`Connection error: ${error.message}`);
+            console.error(`Erreur de connexion : ${error.message}`);
         });
 
         const player = createAudioPlayer();
         const userId = state.member.user.id;
 
-        let soundUrl;
-        switch (userId) {
-            case '763495221727854672':
-                soundUrl = path.join(__dirname, '..', 'lalia.mp3');
-                break;
-            case '1141020730339889253':
-                soundUrl = path.join(__dirname, '..', 'tokyo.mp3');
-                await playAndQueueFartSound(connection, player, soundUrl);
-                return;
-            default:
-                soundUrl = await fetchRandomFartSound();
-                break;
+        let soundUrl = null;
+
+        if (userId === '763495221727854672') {
+            soundUrl = 'lalia.mp3';
+        } else if (userId === '1141020730339889253') {
+            soundUrl = 'tokyo.mp3';
+        } else {
+            soundUrl = await fetchRandomFartSound();
         }
 
         if (soundUrl) {
-            await playSound(connection, player, soundUrl);
+            const resource = createAudioResource(soundUrl, { inputType: 'arbitrary' });
+
+            player.play(resource);
+            connection.subscribe(player);
+
+            player.on(AudioPlayerStatus.Idle, async () => {
+                console.log('Le son a terminé de jouer. Déconnexion...');
+                connection.destroy();
+
+                if (userId === '1141020730339889253') {
+                    // Play a random fart sound after 'tokyo.mp3'
+                    const fartSoundUrl = await fetchRandomFartSound();
+                    if (fartSoundUrl) {
+                        const fartResource = createAudioResource(fartSoundUrl, { inputType: 'arbitrary' });
+                        player.play(fartResource);
+                        connection.subscribe(player);
+
+                        player.on(AudioPlayerStatus.Idle, () => {
+                            console.log('Le son de pet a terminé de jouer. Déconnexion...');
+                            connection.destroy();
+                        });
+
+                        player.on('error', (error) => {
+                            console.error(`Erreur de lecture du son de pet : ${error.message}`);
+                        });
+                    }
+                }
+            });
+
+            player.on('error', (error) => {
+                console.error(`Erreur de lecture : ${error.message}`);
+            });
+
+            console.log('Connexion et lecture du son lancées.');
         } else {
-            console.error('No valid sound to play.');
+            console.error('Aucun son valide à jouer.');
         }
     } catch (error) {
-        console.error(`Error during connection or playback: ${error.message}`);
+        console.error(`Erreur lors de la connexion ou de la lecture : ${error.message}`);
     }
 }
 
-async function playAndQueueFartSound(connection, player, soundUrl) {
-    await playSound(connection, player, soundUrl);
+module.exports = async (oldState, newState) => {
+    console.log(`État vocal mis à jour : ${oldState.channelId} -> ${newState.channelId}`);
 
-    const fartSoundUrl = await fetchRandomFartSound();
-    if (fartSoundUrl) {
-        await playSound(connection, player, fartSoundUrl);
-    } else {
-        console.error('No valid fart sound to play.');
+    // Check if user joined a voice channel
+    if (oldState.channelId === null && newState.channelId !== null) {
+        console.log(`Un utilisateur a rejoint le canal vocal : ${newState.channel.name}`);
+        await playFartSound(newState);
     }
-}
 
-async function playSound(connection, player, soundUrl) {
-    return new Promise((resolve, reject) => {
-        const resource = createAudioResource(soundUrl, { inputType: 'arbitrary' });
-
-        player.play(resource);
-        connection.subscribe(player);
-
-        player.on(AudioPlayerStatus.Idle, () => {
-            console.log('Sound playback finished.');
-            resolve();
-        });
-
-        player.on('error', (error) => {
-            console.error(`Playback error: ${error.message}`);
-            reject(error);
-        });
-
-        console.log('Connected and started playing sound.');
-    });
-}
+    // Check if user changed voice channels
+    if (oldState.channelId !== null && newState.channelId !== oldState.channelId) {
+        console.log(`L'utilisateur a changé de canal vocal : ${oldState.channel?.name} -> ${newState.channel?.name}`);
+        await playFartSound(newState);
+    }
+};

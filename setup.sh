@@ -16,4 +16,5 @@ sudo docker run -d --name discord-bot-container --env-file .env discord-bot
 
 # Display the logs of the discord bot container
 echo "Displaying the logs of the discord bot container..."
+sleep 5
 sudo docker logs discord-bot-container
