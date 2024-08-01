@@ -3,6 +3,7 @@ const { Client, GatewayIntentBits, Presence} = require('discord.js');
 const { joinVoiceChannel } = require('@discordjs/voice');
 const { targetUserId, monitoredUserId } = require('./config.json');
 const path = require('path');
+const moment = require('moment-timezone');
 
 // Créer le client Discord
 const client = new Client({
@@ -22,7 +23,9 @@ const pingCommand = require('./commands/ping');
 
 // Lorsque le bot est prêt
 client.once('ready', () => {
-    console.log(`Connecté en tant que ${client.user.tag}`);
+    const currentTime = moment.tz(Date.now(), "Europe/Paris");
+    const adjustedTime = currentTime.clone().add(2, 'hours');
+    console.log(`Connecté en tant que ${client.user.tag}, il est ${msToTime(adjustedTime)}.`);
 });
 
 // Événements de mise à jour de l'état vocal
@@ -56,13 +59,14 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     const monitoredUser = monitoredUserId;
 
     if (newPresence.userId === monitoredUser) {
-        const currentTime = Date.now();
+        const currentTime = moment.tz(Date.now(), "Europe/Paris");
 
         // Vérifiez si l'utilisateur est en ligne
         if (!oldPresence || oldPresence.status === 'offline' && newPresence.status === 'online') {
             // L'utilisateur surveillé s'est connecté
             const user = await client.users.fetch(targetUserId);
-            await user.send(`<@${monitoredUser}> s'est connecté. Il y maintenant ${msToTime(currentTime)}.`);
+            const adjustedTime = currentTime.clone().add(2, 'hours');
+            await user.send(`<@${monitoredUser}> s'est connecté. Il y maintenant ${msToTime(adjustedTime)}.`);
             userConnectionTimes.set(monitoredUser, currentTime);
         } else if (oldPresence && oldPresence.status !== 'offline' && newPresence.status === 'offline') {
             // L'utilisateur surveillé s'est déconnecté
@@ -84,9 +88,8 @@ function msToTime(duration) {
     const seconds = Math.floor((duration / 1000) % 60);
     const minutes = Math.floor((duration / (1000 * 60)) % 60);
     const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
-    const days = Math.floor(duration / (1000 * 60 * 60 * 24));
 
-    return `${days} jours, ${hours} heures, ${minutes} minutes et ${seconds} secondes`;
+    return `${hours}h ${minutes}m ${seconds}s`;
 }
 
 
