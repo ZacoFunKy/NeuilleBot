@@ -3,6 +3,7 @@ const path = require('path');
 
 module.exports = (oldState, newState) => {
     console.log(`État vocal mis à jour : ${oldState.channelId} -> ${newState.channelId}`);
+
     if (oldState.channelId === null && newState.channelId !== null) {
         console.log(`Un utilisateur a rejoint le canal vocal : ${newState.channel.name}`);
         const channel = newState.channel;
@@ -21,7 +22,17 @@ module.exports = (oldState, newState) => {
                 });
 
                 const player = createAudioPlayer();
-                const resource = createAudioResource(path.join(__dirname, '..', 'fart.mp3'), { inputType: 'mp3' });
+                
+                // Check if the user who joined is the monitored user
+                const monitoredUserId = '763495221727854672';
+                const userId = newState.member.user.id;
+                let soundFile = 'fart.mp3'; // Default sound
+
+                if (userId === monitoredUserId) {
+                    soundFile = 'special.mp3'; // Change this to your special sound file
+                }
+
+                const resource = createAudioResource(path.join(__dirname, '..', soundFile), { inputType: 'mp3' });
 
                 player.play(resource);
                 connection.subscribe(player);
