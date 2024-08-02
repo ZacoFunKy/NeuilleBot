@@ -24,8 +24,7 @@ const pingCommand = require('./commands/ping');
 // Lorsque le bot est prêt
 client.once('ready', () => {
     const currentTime = moment.tz(Date.now(), "Europe/Paris");
-    const adjustedTime = currentTime.clone().add(2, 'hours');
-    console.log(`Connecté en tant que ${client.user.tag}, il est ${msToTime(adjustedTime)}.`);
+    console.log(`Connecté en tant que ${client.user.tag}, il est ${currentTime.format('HH:mm:ss')}.`);
 });
 
 // Événements de mise à jour de l'état vocal
@@ -54,7 +53,6 @@ client.on('messageCreate', async (message) => {
 // Gestion des interactions
 const userConnectionTimes = new Map();
 
-// Surveillance des présences
 client.on('presenceUpdate', async (oldPresence, newPresence) => {
     const monitoredUser = monitoredUserId;
 
@@ -62,19 +60,22 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
         const currentTime = moment.tz(Date.now(), "Europe/Paris");
 
         // Vérifiez si l'utilisateur est en ligne
-        if (!oldPresence || oldPresence.status === 'offline' && newPresence.status === 'online') {
+        if ((!oldPresence || oldPresence.status === 'offline') && newPresence.status === 'online') {
             // L'utilisateur surveillé s'est connecté
             const user = await client.users.fetch(targetUserId);
-            const adjustedTime = currentTime.clone().add(2, 'hours');
-            await user.send(`<@${monitoredUser}> s'est connecté. Il y maintenant ${msToTime(adjustedTime)}.`);
+            await user.send(`<@${monitoredUser}> s'est connecté. Il est ${currentTime.format('HH:mm:ss')}.`);
             userConnectionTimes.set(monitoredUser, currentTime);
+            console.log(`Connection time set for user ${monitoredUser}: ${currentTime.format()}`);
         } else if (oldPresence && oldPresence.status !== 'offline' && newPresence.status === 'offline') {
             // L'utilisateur surveillé s'est déconnecté
             if (userConnectionTimes.has(monitoredUser)) {
                 const connectionTime = userConnectionTimes.get(monitoredUser);
-                const timeDifference = currentTime - connectionTime;
+                const timeDifference = moment.duration(currentTime.diff(connectionTime));
+                console.log(`Calculated time difference for user ${monitoredUser}: ${timeDifference.asMilliseconds()} ms`);
+
                 const user = await client.users.fetch(targetUserId);
                 await user.send(`<@${monitoredUser}> s'est déconnecté. Temps total en ligne : ${msToTime(timeDifference)}.`);
+                console.log(`Disconnection time for user ${monitoredUser}: ${timeDifference}`);
 
                 // Effacer le temps de connexion de la carte
                 userConnectionTimes.delete(monitoredUser);
@@ -83,11 +84,11 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     }
 });
 
-// Fonction pour convertir le temps en millisecondes en format 'jours heures minutes secondes'
+// Fonction pour convertir la durée en format 'heures minutes secondes'
 function msToTime(duration) {
-    const seconds = Math.floor((duration / 1000) % 60);
-    const minutes = Math.floor((duration / (1000 * 60)) % 60);
-    const hours = Math.floor((duration / (1000 * 60 * 60)) % 24);
+    const hours = Math.floor(duration.asHours());
+    const minutes = Math.floor(duration.asMinutes()) % 60;
+    const seconds = Math.floor(duration.asSeconds()) % 60;
 
     return `${hours}h ${minutes}m ${seconds}s`;
 }
